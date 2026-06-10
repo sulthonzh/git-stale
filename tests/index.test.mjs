@@ -1,0 +1,161 @@
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { formatAge, daysBetween, parseArgs, formatText, formatJSON, formatMarkdown, HELP } from '../src/index.js';
+
+describe('formatAge', () => {
+  it('shows "today" for 0 seconds', () => {
+    assert.equal(formatAge(0), 'today');
+  });
+  it('shows days for < 30 days', () => {
+    assert.equal(formatAge(5 * 86400), '5 days ago');
+  });
+  it('shows months for >= 30 days', () => {
+    assert.equal(formatAge(60 * 86400), '2 months ago');
+  });
+  it('shows singular day', () => {
+    assert.equal(formatAge(86400), '1 day ago');
+  });
+  it('shows singular month', () => {
+    assert.equal(formatAge(30 * 86400), '1 month ago');
+  });
+  it('shows "?" for null', () => {
+    assert.equal(formatAge(null), '?');
+  });
+});
+
+describe('daysBetween', () => {
+  it('converts seconds to days', () => {
+    assert.equal(daysBetween(3 * 86400), 3);
+  });
+  it('returns Infinity for null', () => {
+    assert.equal(daysBetween(null), Infinity);
+  });
+  it('returns 0 for 0', () => {
+    assert.equal(daysBetween(0), 0);
+  });
+});
+
+describe('parseArgs', () => {
+  it('returns defaults with no args', () => {
+    const opts = parseArgs(['node', 'cli.js']);
+    assert.equal(opts.olderThan, 0);
+    assert.equal(opts.format, 'text');
+    assert.equal(opts.includeMerged, false);
+    assert.equal(opts.prune, false);
+  });
+  it('parses --older-than 30d', () => {
+    const opts = parseArgs(['node', 'cli.js', '--older-than', '30d']);
+    assert.equal(opts.olderThan, 30);
+  });
+  it('parses --older-than 3m', () => {
+    const opts = parseArgs(['node', 'cli.js', '--older-than', '3m']);
+    assert.equal(opts.olderThan, 90);
+  });
+  it('parses --older-than 1y', () => {
+    const opts = parseArgs(['node', 'cli.js', '--older-than', '1y']);
+    assert.equal(opts.olderThan, 365);
+  });
+  it('parses --older-than 60 (bare number)', () => {
+    const opts = parseArgs(['node', 'cli.js', '--older-than', '60']);
+    assert.equal(opts.olderThan, 60);
+  });
+  it('parses --json', () => {
+    const opts = parseArgs(['node', 'cli.js', '--json']);
+    assert.equal(opts.format, 'json');
+  });
+  it('parses --markdown', () => {
+    const opts = parseArgs(['node', 'cli.js', '--markdown']);
+    assert.equal(opts.format, 'markdown');
+  });
+  it('parses --include-unmerged', () => {
+    const opts = parseArgs(['node', 'cli.js', '--include-unmerged']);
+    assert.equal(opts.includeMerged, true);
+  });
+  it('parses --repo path', () => {
+    const opts = parseArgs(['node', 'cli.js', '--repo', '/tmp/myrepo']);
+    assert.equal(opts.repo, '/tmp/myrepo');
+  });
+  it('parses --prune', () => {
+    const opts = parseArgs(['node', 'cli.js', '--prune']);
+    assert.equal(opts.prune, true);
+  });
+  it('returns help for --help', () => {
+    const opts = parseArgs(['node', 'cli.js', '--help']);
+    assert.equal(opts.help, true);
+  });
+  it('returns help for -h', () => {
+    const opts = parseArgs(['node', 'cli.js', '-h']);
+    assert.equal(opts.help, true);
+  });
+});
+
+describe('formatText', () => {
+  it('shows clean message when no stale branches', () => {
+    const out = formatText({ branches: [], defaultBranch: 'main' });
+    assert.ok(out.includes('No stale branches'));
+  });
+  it('lists stale branches with details', () => {
+    const data = {
+      branches: [
+        { name: 'feature-old', age: 90 * 86400, staleDays: 90, merged: true, upstream: null },
+        { name: 'bugfix-stuck', age: 45 * 86400, staleDays: 45, merged: false, upstream: 'origin/bugfix-stuck' },
+      ],
+      defaultBranch: 'main',
+    };
+    const out = formatText(data);
+    assert.ok(out.includes('feature-old'));
+    assert.ok(out.includes('bugfix-stuck'));
+    assert.ok(out.includes('safe to delete'));
+    assert.ok(out.includes('unmerged work'));
+    assert.ok(out.includes('2 stale branches'));
+  });
+  it('shows singular for 1 branch', () => {
+    const data = {
+      branches: [
+        { name: 'old-thing', age: 60 * 86400, staleDays: 60, merged: true, upstream: null },
+      ],
+      defaultBranch: 'main',
+    };
+    const out = formatText(data);
+    assert.ok(out.includes('1 stale branch'));
+  });
+});
+
+describe('formatJSON', () => {
+  it('outputs valid JSON', () => {
+    const data = { branches: [{ name: 'test', age: 100, staleDays: 0, merged: true }], defaultBranch: 'main' };
+    const out = formatJSON(data);
+    const parsed = JSON.parse(out);
+    assert.equal(parsed.branches.length, 1);
+    assert.equal(parsed.branches[0].name, 'test');
+  });
+});
+
+describe('formatMarkdown', () => {
+  it('shows clean message when no stale branches', () => {
+    const out = formatMarkdown({ branches: [], defaultBranch: 'main' });
+    assert.ok(out.includes('No stale branches'));
+  });
+  it('renders markdown table', () => {
+    const data = {
+      branches: [
+        { name: 'feat-x', age: 30 * 86400, staleDays: 30, merged: true, upstream: null },
+      ],
+      defaultBranch: 'main',
+    };
+    const out = formatMarkdown(data);
+    assert.ok(out.includes('feat-x'));
+    assert.ok(out.includes('|'));
+    assert.ok(out.includes('Safe to delete'));
+  });
+});
+
+describe('HELP', () => {
+  it('includes usage info', () => {
+    assert.ok(HELP.includes('git-stale'));
+    assert.ok(HELP.includes('--older-than'));
+    assert.ok(HELP.includes('--prune'));
+    assert.ok(HELP.includes('--json'));
+    assert.ok(HELP.includes('--markdown'));
+  });
+});
