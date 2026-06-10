@@ -1,39 +1,22 @@
 {
   "name": "git-stale",
   "version": "1.0.0",
-  "description": "Find stale, abandoned, and forgotten git branches — cleanup your repo",
-  "main": "dist/index.js",
+  "description": "Find stale local git branches that are safe to delete",
   "bin": {
-    "git-stale": "dist/cli.js"
+    "git-stale": "./cli.js"
   },
-  "types": "dist/index.d.ts",
+  "main": "src/index.js",
   "scripts": {
-    "build": "tsc",
-    "test": "node --test dist/test/*.test.js",
-    "prepublishOnly": "npm run build"
+    "test": "node --test tests/*.test.mjs",
+    "stale": "node cli.js"
   },
-  "keywords": [
-    "git",
-    "branches",
-    "stale",
-    "cleanup",
-    "abandoned",
-    "cli"
-  ],
-  "author": "sulthonzh",
+  "keywords": ["git", "branches", "stale", "cleanup", "cli"],
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/sulthonzh/git-stale"
-  },
   "engines": {
     "node": ">=18"
   },
-  "files": [
-    "dist"
-  ],
-  "dependencies": {
-    "@types/node": "^25.9.1",
-    "typescript": "^6.0.3"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sulthonzh/git-stale"
   }
 }
