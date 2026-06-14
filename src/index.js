@@ -1,7 +1,6 @@
 'use strict';
 
 const { execSync } = require('child_process');
-const path = require('path');
 
 function runGit(args, cwd) {
   try {
@@ -25,7 +24,6 @@ function getCurrentBranch(cwd) {
 }
 
 function getDefaultBranch(cwd) {
-  // Try common defaults
   for (const candidate of ['main', 'master', 'trunk', 'develop']) {
     const result = runGit(`rev-parse --verify ${candidate}`, cwd);
     if (result) return candidate;
@@ -160,11 +158,7 @@ function parseArgs(argv) {
         if (match[2] === 'y') n *= 365;
         options.olderThan = n;
       }
-    } else if (arg === '--all') {
-      options.includeMerged = true;
-      // Actually --all means show all branches including unmerged
-      // Let me reconsider: --all shows unmerged too
-    } else if (arg === '--include-unmerged') {
+    } else if (arg === '--all' || arg === '--include-unmerged') {
       options.includeMerged = true;
     } else if (arg === '--no-merge-check') {
       options.noMergeCheck = true;
