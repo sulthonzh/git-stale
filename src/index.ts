@@ -118,10 +118,6 @@ export function isMerged(
   defaultBranch: string,
   repoPath: string
 ): boolean {
-  const result = git(
-    `merge-base --is-ancestor ${branchName} ${defaultBranch}`,
-    repoPath
-  );
   // exit code 0 = merged
   try {
     execSync(`git merge-base --is-ancestor ${branchName} ${defaultBranch}`, {
