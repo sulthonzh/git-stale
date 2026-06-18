@@ -1,12 +1,21 @@
 # git-stale
 
-Find stale local git branches that are safe to delete.
+Find stale local git branches that are safe to delete — in one command.
 
 You know that feeling — your `git branch` list is 40 branches long, half of them are from months ago, and you're not sure which ones are merged. `git-stale` tells you exactly which branches are safe to nuke.
 
 ## Why
 
 I got tired of manually checking `git branch --merged main` and then squinting at dates. This does it in one command — shows which branches are old, which are merged, and which are safe to delete.
+
+## vs Alternatives
+
+| Tool | What it does | What it lacks |
+|------|-------------|---------------|
+| `git branch --merged` | Lists merged branches | No age info, no "stale" concept, no bulk cleanup |
+| `git-delete-squashed` | Deletes squashed branches | Only squash-merged, not age-based |
+| `git cleanup` (gh CLI) | Remote branch cleanup | Doesn't handle local branches |
+| **git-stale** | Age + merge status + bulk prune | — |
 
 ## Install
 
@@ -70,6 +79,8 @@ experiment/raft   45 days ago       no      ⚠️  has unmerged work
 | `--json` | Output as JSON |
 | `--markdown` | Output as Markdown |
 | `--repo <path>` | Path to git repo (default: current directory) |
+| `-V, --version` | Show version |
+| `-h, --help` | Show help |
 
 ## Exit Codes
 
@@ -78,6 +89,43 @@ experiment/raft   45 days ago       no      ⚠️  has unmerged work
 - `2` — error
 
 Great for CI: `git-stale --older-than 90d && echo "clean"`
+
+## Real-World Examples
+
+### 1. Post-Release Cleanup
+
+After shipping a big release with 15+ feature branches:
+
+```bash
+# See what can go
+git-stale --older-than 14d
+
+# Nuke the merged ones
+git-stale --older-than 14d --prune
+```
+
+### 2. CI Gate for Branch Hygiene
+
+Fail CI if branches pile up — paste into a GitHub Action:
+
+```yaml
+- name: Check for stale branches
+  run: |
+    STALE=$(git-stale --json | jq '.branches | length')
+    if [ "$STALE" -gt 10 ]; then
+      echo "⚠️ $STALE stale branches — time for cleanup"
+      exit 1
+    fi
+```
+
+### 3. Weekly Cleanup Report
+
+Generate a markdown report for your team chat:
+
+```bash
+git-stale --older-than 30d --markdown > stale-report.md
+# Paste into Slack/Notion
+```
 
 ## How It Works
 

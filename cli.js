@@ -2,11 +2,18 @@
 'use strict';
 
 const { parseArgs, analyze, formatText, formatJSON, formatMarkdown, HELP } = require('./src/index');
+const { execFileSync } = require('child_process');
+const pkg = require('./package.json');
 
 const options = parseArgs(process.argv);
 
 if (options.help) {
   console.log(HELP);
+  process.exit(0);
+}
+
+if (options.version) {
+  console.log(pkg.version);
   process.exit(0);
 }
 
@@ -21,7 +28,7 @@ if (options.prune) {
   }
   for (const b of toDelete) {
     try {
-      require('child_process').execSync(`git branch -d ${b.name}`, { cwd, stdio: 'pipe' });
+      execFileSync('git', ['branch', '-d', b.name], { cwd, stdio: 'pipe' });
       console.log(`  deleted ${b.name}`);
     } catch (e) {
       console.error(`  failed to delete ${b.name}: ${e.message}`);

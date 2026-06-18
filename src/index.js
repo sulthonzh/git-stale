@@ -1,17 +1,23 @@
 'use strict';
 
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
+/**
+ * Run a git command safely (no shell interpolation).
+ * @param {string[]} args - Arguments to pass to git
+ * @param {string} cwd - Working directory
+ * @returns {string|null} Trimmed stdout or null on failure
+ */
 function runGit(args, cwd) {
   try {
-    return execSync(`git ${args}`, { encoding: 'utf-8', cwd, stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+    return execFileSync('git', args, { encoding: 'utf-8', cwd, stdio: ['pipe', 'pipe', 'pipe'] }).trim();
   } catch {
     return null;
   }
 }
 
 function getBranches(cwd) {
-  const output = runGit('branch --format=%(refname:short)%(upstream:short)', cwd);
+  const output = runGit(['branch', '--format=%(refname:short)%(upstream:short)'], cwd);
   if (!output) return [];
   return output.split('\n').filter(Boolean).map(line => {
     const [name, upstream] = line.split(/\s+/);
@@ -20,19 +26,19 @@ function getBranches(cwd) {
 }
 
 function getCurrentBranch(cwd) {
-  return runGit('branch --show-current', cwd);
+  return runGit(['branch', '--show-current'], cwd);
 }
 
 function getDefaultBranch(cwd) {
   for (const candidate of ['main', 'master', 'trunk', 'develop']) {
-    const result = runGit(`rev-parse --verify ${candidate}`, cwd);
+    const result = runGit(['rev-parse', '--verify', candidate], cwd);
     if (result) return candidate;
   }
   return 'main';
 }
 
 function getBranchAge(branch, cwd) {
-  const output = runGit(`log -1 --format=%ct ${branch}`, cwd);
+  const output = runGit(['log', '-1', '--format=%ct', branch], cwd);
   if (!output) return null;
   const commitTs = parseInt(output, 10);
   const nowTs = Math.floor(Date.now() / 1000);
@@ -40,12 +46,18 @@ function getBranchAge(branch, cwd) {
 }
 
 function isMerged(branch, defaultBranch, cwd) {
-  const result = runGit(`merge-base --is-ancestor ${branch} ${defaultBranch}`, cwd);
-  return result !== null; // exit code 0 = is ancestor = merged
+  try {
+    execFileSync('git', ['merge-base', '--is-ancestor', branch, defaultBranch], {
+      encoding: 'utf-8', cwd, stdio: ['pipe', 'pipe', 'pipe']
+    });
+    return true; // exit code 0 = is ancestor = merged
+  } catch {
+    return false;
+  }
 }
 
 function formatAge(seconds) {
-  if (seconds == null) return '?';
+  if (seconds == null || !Number.isFinite(seconds)) return '?';
   const days = Math.floor(seconds / 86400);
   if (days === 0) return 'today';
   if (days === 1) return '1 day ago';
@@ -98,10 +110,11 @@ function formatText(data) {
   }
 
   const maxName = Math.max(...branches.map(b => b.name.length), 4);
+  const sep = '─'.repeat(maxName + 30);
   let out = `Stale branches (default: ${defaultBranch})\n`;
-  out += `${'─'.repeat(maxName + 30)}\n`;
+  out += `${sep}\n`;
   out += `${'Branch'.padEnd(maxName)}  Age               Merged  Status\n`;
-  out += `${'─'.repeat(maxName + 30)}\n`;
+  out += `${sep}\n`;
 
   for (const b of branches) {
     const age = formatAge(b.age).padEnd(17);
@@ -158,7 +171,7 @@ function parseArgs(argv) {
         if (match[2] === 'y') n *= 365;
         options.olderThan = n;
       }
-    } else if (arg === '--all' || arg === '--include-unmerged') {
+    } else if (arg === '--include-unmerged') {
       options.includeMerged = true;
     } else if (arg === '--no-merge-check') {
       options.noMergeCheck = true;
@@ -172,6 +185,8 @@ function parseArgs(argv) {
       options.prune = true;
     } else if (arg === '--help' || arg === '-h') {
       return { help: true };
+    } else if (arg === '--version' || arg === '-V') {
+      return { version: true };
     }
   }
 
@@ -193,6 +208,7 @@ OPTIONS
   --json                    Output as JSON
   --markdown                Output as Markdown
   --repo <path>             Path to git repo (default: current dir)
+  -V, --version             Show version
   -h, --help                Show this help
 
 EXAMPLES
@@ -203,4 +219,4 @@ EXAMPLES
   git-stale --json                   Machine-readable output
 `;
 
-module.exports = { analyze, formatText, formatJSON, formatMarkdown, parseArgs, formatAge, daysBetween, HELP, getBranches, getCurrentBranch, getDefaultBranch, getBranchAge, isMerged };
+module.exports = { analyze, formatText, formatJSON, formatMarkdown, parseArgs, formatAge, daysBetween, HELP, getBranches, getCurrentBranch, getDefaultBranch, getBranchAge, isMerged, runGit };
