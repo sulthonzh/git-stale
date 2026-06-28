@@ -57,7 +57,7 @@ function isMerged(branch, defaultBranch, cwd) {
 }
 
 function formatAge(seconds) {
-  if (seconds == null || !Number.isFinite(seconds)) return '?';
+  if (seconds === null || seconds === undefined || !Number.isFinite(seconds)) return '?';
   const days = Math.floor(seconds / 86400);
   if (days === 0) return 'today';
   if (days === 1) return '1 day ago';
@@ -68,7 +68,7 @@ function formatAge(seconds) {
 }
 
 function daysBetween(seconds) {
-  if (seconds == null) return Infinity;
+  if (seconds === null || seconds === undefined) return Infinity;
   return Math.floor(seconds / 86400);
 }
 

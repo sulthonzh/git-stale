@@ -12,18 +12,38 @@
   },
   "scripts": {
     "test": "node --test tests/*.test.mjs",
+    "test:coverage": "c8 --reporter=text --reporter=lcov node --test tests/*.test.mjs",
+    "lint": "eslint cli.js src/index.js tests/*.test.mjs",
     "stale": "node cli.js",
-    "prepublishOnly": "npm test"
+    "prepublishOnly": "npm test && npm run lint"
   },
-  "keywords": ["git", "branches", "stale", "cleanup", "cli", "safe", "delete"],
+  "keywords": [
+    "git",
+    "branches",
+    "stale",
+    "cleanup",
+    "cli",
+    "safe",
+    "delete"
+  ],
   "license": "MIT",
   "engines": {
     "node": ">=18"
   },
-  "files": ["cli.js", "src/", "README.md", "CHANGELOG.md"],
+  "files": [
+    "cli.js",
+    "src/",
+    "README.md",
+    "CHANGELOG.md"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/sulthonzh/git-stale"
   },
-  "author": "sulthonzh"
+  "author": "sulthonzh",
+  "devDependencies": {
+    "c8": "^11.0.0",
+    "eslint": "^10.6.0",
+    "globals": "^17.7.0"
+  }
 }
