@@ -28,10 +28,19 @@ describe('formatAge', () => {
     assert.equal(formatAge(NaN), '?');
   });
   it('handles 1 year', () => {
-    assert.equal(formatAge(365 * 86400), '12 months ago');
+    assert.equal(formatAge(365 * 86400), '1 year ago');
   });
   it('handles 2+ years', () => {
-    assert.equal(formatAge(730 * 86400), '24 months ago');
+    assert.equal(formatAge(730 * 86400), '2 years ago');
+  });
+  it('handles exactly 11 months (334 days)', () => {
+    assert.equal(formatAge(334 * 86400), '11 months ago');
+  });
+  it('handles negative seconds gracefully', () => {
+    assert.equal(formatAge(-1000), '?');
+  });
+  it('handles Infinity', () => {
+    assert.equal(formatAge(Infinity), '?');
   });
 });
 
@@ -135,6 +144,20 @@ describe('parseArgs', () => {
     const opts = parseArgs(['node', 'cli.js', '--older-than', 'abc']);
     assert.equal(opts.olderThan, 0); // stays default
   });
+  it('does not consume next flag as --older-than value', () => {
+    const opts = parseArgs(['node', 'cli.js', '--older-than', '--json']);
+    assert.equal(opts.olderThan, 0); // not consumed
+    assert.equal(opts.format, 'json'); // flag still parsed
+  });
+  it('does not consume next flag when --older-than has no value', () => {
+    const opts = parseArgs(['node', 'cli.js', '--older-than', '--markdown']);
+    assert.equal(opts.olderThan, 0);
+    assert.equal(opts.format, 'markdown');
+  });
+  it('handles --older-than at end of args without value', () => {
+    const opts = parseArgs(['node', 'cli.js', '--older-than']);
+    assert.equal(opts.olderThan, 0); // stays default
+  });
 });
 
 describe('formatText', () => {
@@ -177,6 +200,39 @@ describe('formatText', () => {
     const out = formatText(data);
     assert.ok(out.includes('mystery'));
     assert.ok(out.includes('?'));
+  });
+  it('shows safe-to-delete count correctly when some merged, some not', () => {
+    const data = {
+      branches: [
+        { name: 'a', age: 60 * 86400, staleDays: 60, merged: true, upstream: null },
+        { name: 'b', age: 30 * 86400, staleDays: 30, merged: false, upstream: null },
+        { name: 'c', age: 90 * 86400, staleDays: 90, merged: true, upstream: null },
+      ],
+      defaultBranch: 'main',
+    };
+    const out = formatText(data);
+    assert.ok(out.includes('2 safe to delete'));
+  });
+  it('does not show safe-to-delete count when none merged', () => {
+    const data = {
+      branches: [
+        { name: 'a', age: 60 * 86400, staleDays: 60, merged: false, upstream: null },
+      ],
+      defaultBranch: 'main',
+    };
+    const out = formatText(data);
+    assert.ok(!out.includes('safe to delete'));
+  });
+  it('handles long branch names in table formatting', () => {
+    const longName = 'feature/very-long-branch-name-that-goes-on';
+    const data = {
+      branches: [
+        { name: longName, age: 90 * 86400, staleDays: 90, merged: true, upstream: null },
+      ],
+      defaultBranch: 'main',
+    };
+    const out = formatText(data);
+    assert.ok(out.includes(longName));
   });
 });
 
@@ -234,6 +290,38 @@ describe('formatMarkdown', () => {
     const out = formatMarkdown(data);
     assert.ok(out.includes('2'));
     assert.ok(out.includes('1'));
+  });
+  it('renders singular for 1 branch', () => {
+    const data = {
+      branches: [
+        { name: 'solo', age: 30 * 86400, staleDays: 30, merged: false, upstream: null },
+      ],
+      defaultBranch: 'main',
+    };
+    const out = formatMarkdown(data);
+    assert.ok(out.includes('1') && out.includes('stale branch'));
+    assert.ok(!out.includes('stale branches'));
+  });
+  it('does not show safe count when none merged', () => {
+    const data = {
+      branches: [
+        { name: 'wip', age: 30 * 86400, staleDays: 30, merged: false, upstream: null },
+      ],
+      defaultBranch: 'main',
+    };
+    const out = formatMarkdown(data);
+    assert.ok(!out.includes('safe to delete'));
+  });
+  it('shows all merged count in summary', () => {
+    const data = {
+      branches: [
+        { name: 'a', age: 30 * 86400, staleDays: 30, merged: true, upstream: null },
+        { name: 'b', age: 60 * 86400, staleDays: 60, merged: true, upstream: null },
+      ],
+      defaultBranch: 'main',
+    };
+    const out = formatMarkdown(data);
+    assert.ok(out.includes('2') && out.includes('safe to delete'));
   });
 });
 

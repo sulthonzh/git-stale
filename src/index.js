@@ -57,14 +57,19 @@ function isMerged(branch, defaultBranch, cwd) {
 }
 
 function formatAge(seconds) {
-  if (seconds === null || seconds === undefined || !Number.isFinite(seconds)) return '?';
+  if (seconds === null || seconds === undefined || !Number.isFinite(seconds) || seconds < 0) return '?';
   const days = Math.floor(seconds / 86400);
   if (days === 0) return 'today';
   if (days === 1) return '1 day ago';
   if (days < 30) return `${days} days ago`;
-  const months = Math.floor(days / 30);
-  if (months === 1) return '1 month ago';
-  return `${months} months ago`;
+  if (days < 365) {
+    const months = Math.floor(days / 30);
+    if (months === 1) return '1 month ago';
+    return `${months} months ago`;
+  }
+  const years = Math.floor(days / 365);
+  if (years === 1) return '1 year ago';
+  return `${years} years ago`;
 }
 
 function daysBetween(seconds) {
@@ -162,14 +167,17 @@ function parseArgs(argv) {
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    if (arg === '--older-than' && args[i + 1]) {
-      const val = args[++i];
-      const match = val.match(/^(\d+)(d|m|y)?$/);
-      if (match) {
-        let n = parseInt(match[1], 10);
-        if (match[2] === 'm') n *= 30;
-        if (match[2] === 'y') n *= 365;
-        options.olderThan = n;
+    if (arg === '--older-than') {
+      const val = args[i + 1];
+      if (val && !val.startsWith('-')) {
+        const match = val.match(/^(\d+)(d|m|y)?$/);
+        if (match) {
+          i++;
+          let n = parseInt(match[1], 10);
+          if (match[2] === 'm') n *= 30;
+          if (match[2] === 'y') n *= 365;
+          options.olderThan = n;
+        }
       }
     } else if (arg === '--include-unmerged') {
       options.includeMerged = true;
