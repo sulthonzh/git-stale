@@ -43,6 +43,7 @@
   },
   "author": "sulthonzh",
   "devDependencies": {
+    "@changesets/cli": "^2.31.0",
     "c8": "^11.0.0",
     "eslint": "^10.6.0",
     "globals": "^17.7.0"
