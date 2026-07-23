@@ -19,15 +19,13 @@ function createTempRepo() {
   return dir;
 }
 
-function makeCommit(dir, filename, content, msg) {
-  fs.writeFileSync(path.join(dir, filename), content);
-  execFileSync('git', ['-C', dir, 'add', '.'], { stdio: 'pipe' });
-  execFileSync('git', ['-C', dir, 'commit', '-m', msg], { stdio: 'pipe' });
-}
-
 function makeBranch(dir, name, commitInfo) {
   execFileSync('git', ['-C', dir, 'checkout', '-b', name], { stdio: 'pipe' });
-  if (commitInfo) makeCommit(dir, commitInfo.file, commitInfo.content, commitInfo.msg);
+  if (commitInfo) {
+    fs.writeFileSync(path.join(dir, commitInfo.file), commitInfo.content);
+    execFileSync('git', ['-C', dir, 'add', '.'], { stdio: 'pipe' });
+    execFileSync('git', ['-C', dir, 'commit', '-m', commitInfo.msg], { stdio: 'pipe' });
+  }
   execFileSync('git', ['-C', dir, 'checkout', 'main'], { stdio: 'pipe' });
 }
 
@@ -78,7 +76,6 @@ describe('cli.js prune error path (lines 34-35)', () => {
 });
 
 // ─── index.js line 89: !includeMerged && merged === false → continue ───
-// This branch is hit when includeMerged is false AND merged is false (unmerged branch excluded)
 
 describe('index.js line 89: unmerged branch exclusion', () => {
   it('excludes unmerged branches when includeMerged is false (default)', () => {
