@@ -1,6 +1,7 @@
 # STATUS.md — git-stale Quality Audit
 
-**Audit date:** 2026-07-17 (UTC 2026-07-17 10:34)
+**Audit date:** 2026-07-23 (UTC 2026-07-23 05:00)
+**Prior audit:** 2026-07-17 (UTC 2026-07-17 10:34)
 **Auditor:** oss-builder automated cycle
 **Verdict:** ✅ EXCEPTIONAL
 
@@ -8,8 +9,8 @@
 
 - [x] **README hooks reader in first 3 lines** — "Find stale local git branches that are safe to delete — in one command." Punchy, clear value prop.
 - [x] **Quick start works in <2 minutes** — `npx git-stale` or `npm install -g git-stale`. Zero config.
-- [x] **All tests GREEN (100% pass rate)** — 113/113 pass, 0 fail.
-- [x] **Test coverage >= 80% on core logic** — index.js: 100% stmts, 98.46% branches, 100% funcs. cli.js: 96.22% stmts, 91.3% branches. Overall: 99.29% stmts, 97.38% branches.
+- [x] **All tests GREEN (100% pass rate)** — 123/123 pass (113 existing + 10 new coverage-gaps-2), 0 fail.
+- [x] **Test coverage >= 80% on core logic** — index.js: 100% stmts, 97.69% branches, 100% funcs. cli.js: 96.22% stmts, 91.3% branches. Overall: 99.29% stmts, 96.73% branches.
 - [x] **Zero TypeScript errors** — Plain JS project (no TS). ESLint clean (0 warnings).
 - [x] **Zero ESLint warnings** — Verified with `npm run lint`.
 - [x] **No TODO/FIXME in shipped code** — `grep -rn 'TODO\|FIXME\|HACK\|XXX' src/ cli.js tests/` returns nothing.
