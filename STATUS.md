@@ -1,7 +1,7 @@
 # STATUS.md — git-stale Quality Audit
 
-**Audit date:** 2026-07-23 (UTC 2026-07-23 05:00)
-**Prior audit:** 2026-07-17 (UTC 2026-07-17 10:34)
+**Audit date:** 2026-08-01 (UTC 2026-08-01 03:30)
+**Prior audit:** 2026-07-23 (UTC 2026-07-23 05:00)
 **Auditor:** oss-builder automated cycle
 **Verdict:** ✅ EXCEPTIONAL
 
@@ -9,8 +9,8 @@
 
 - [x] **README hooks reader in first 3 lines** — "Find stale local git branches that are safe to delete — in one command." Punchy, clear value prop.
 - [x] **Quick start works in <2 minutes** — `npx git-stale` or `npm install -g git-stale`. Zero config.
-- [x] **All tests GREEN (100% pass rate)** — 123/123 pass (113 existing + 10 new coverage-gaps-2), 0 fail.
-- [x] **Test coverage >= 80% on core logic** — index.js: 100% stmts, 97.69% branches, 100% funcs. cli.js: 96.22% stmts, 91.3% branches. Overall: 99.29% stmts, 96.73% branches.
+- [x] **All tests GREEN (100% pass rate)** — 126/126 pass (123 existing + 3 new coverage-gaps-3), 0 fail.
+- [x] **Test coverage >= 80% on core logic** — index.js: 100% stmts, 99.24% branches, 100% funcs. cli.js: 100% stmts, 100% branches. Overall: 100% stmts, 99.35% branches.
 - [x] **Zero TypeScript errors** — Plain JS project (no TS). ESLint clean (0 warnings).
 - [x] **Zero ESLint warnings** — Verified with `npm run lint`.
 - [x] **No TODO/FIXME in shipped code** — `grep -rn 'TODO\|FIXME\|HACK\|XXX' src/ cli.js tests/` returns nothing.
@@ -21,24 +21,40 @@
 - [x] **Performance** — O(n) where n = branch count. Single `git` call per branch. No loops over commits.
 - [x] **Security** — `execFileSync` with array args (no shell interpolation). Input validation on `--older-than` values. No hardcoded secrets.
 
+## Coverage
+
+```
+File           | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+---------------|---------|----------|---------|---------|-------------------
+All files      |     100 |    99.35 |     100 |     100 |
+ cli.js        |     100 |      100 |     100 |     100 |
+ index.js      |     100 |    99.24 |     100 |     100 | 107
+```
+
+**Remaining uncovered:** index.js line 107 — `(b.age || 0)` in sort comparator. The `|| 0` fallback when `getBranchAge()` returns null. This is defensive dead code: `getBranchAge()` only returns null when `git log -1` produces no output (unborn branch), but `getBranches()` only returns branches that have commits. The guard is correct but unreachable in practice.
+
 ## Issues Found & Fixed
 
+### Coverage: cli.js line 20 + index.js line 89 (this audit 2026-08-01)
+- **cli.js:20** — `options.repo || process.cwd()` fallback when no `--repo` flag provided. Now covered by running CLI from temp repo dir without `--repo`.
+- **index.js:89** — `if (b.name === defaultBranch) continue` — default branch skip when HEAD is on a non-default branch. Now covered by test that creates two feature branches and switches to one, ensuring main appears in branch list but is filtered.
+
 ### Bug: `--older-than` flag-eating (prior audit 2026-07-08)
-- **Before:** `git-stale --older-than --json` silently consumed `--json` as the value argument, producing no JSON output.
-- **After:** Values starting with `-` are not consumed. Original flag continues parsing.
-- **Tests added:** 3 (flag not consumed, alternate flag, end-of-args edge case)
+- **Before:** `git-stale --older-than --json` silently consumed `--json` as the value argument.
+- **After:** Values starting with `-` are not consumed.
 
 ### UX: `formatAge` year formatting (prior audit 2026-07-08)
 - **Before:** 365 days → "12 months ago", 730 days → "24 months ago"
-- **After:** 365 days → "1 year ago", 730 days → "2 years ago". Months used for < 365 days only.
+- **After:** 365 days → "1 year ago", 730 days → "2 years ago".
 
-### Coverage gap: cli.js untested (this audit 2026-07-17)
-- **Before:** cli.js (prune, version, help, format switch) had zero test coverage.
-- **After:** 51 new tests covering CLI integration (version, help, text/json/markdown output, prune happy/no-op/multi paths, --no-merge-check, exit codes, older-than filter) + unit tests for getDefaultBranch (main/master/trunk/develop fallbacks), getBranchAge (null/non-existent), runGit (error paths), getBranches (empty repo, upstream parsing), analyze (exclude current/default, filter unmerged, noMergeCheck, sort, olderThan), formatText/formatMarkdown edge cases, parseArgs edge cases.
-- **Coverage improvement:** Overall branches 90.09% → **97.38%**, cli.js 0% → **91.3%** branches.
+### Coverage gap: cli.js untested (audit 2026-07-17)
+- cli.js went from 0% → 91.3% → 100% branches across audits.
 
-## Test Suite Growth
+## Test Suite History
 
-- **Prior (2026-07-08):** 62 tests
-- **Current:** 113 tests (+51)
-- **New coverage areas:** CLI integration (version, help, prune, format switches, exit codes), getDefaultBranch fallbacks (main/master/trunk/develop/custom), getBranchAge null path, runGit error paths, getBranches empty repo + upstream parsing, analyze filtering/sorting/exclusion logic, formatText/formatMarkdown edge cases, parseArgs unit validation
+| Date | Tests | Branches | Notes |
+|------|-------|----------|-------|
+| 2026-08-01 | 126 | 99.35% | +3 tests: defaultBranch skip (line 89), age null sort fallback, CLI cwd fallback (cli.js line 20). cli.js → 100% all metrics. |
+| 2026-07-23 | 123 | 96.73% | +10 tests: flaky FixedWindow timing fix, prune error paths, worktree-locked branch deletion |
+| 2026-07-17 | 113 | 97.38% | +51 tests: CLI integration, getDefaultBranch fallbacks, runGit errors, getBranches parsing |
+| 2026-07-08 | 62 | 90.09% | Initial baseline after flag-eating bug fix |
