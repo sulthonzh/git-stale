@@ -8,3 +8,10 @@ __pycache__/
 *.egg-info/
 .mypy_cache/
 .env.*
+
+# Additional patterns
+*.log
+*.tgz
+*.DS_Store
+.idea/
+.vscode/
