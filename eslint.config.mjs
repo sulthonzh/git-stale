@@ -20,7 +20,7 @@ export default [
     ignores: ['node_modules/', 'coverage/'],
   },
   {
-    files: ['tests/**/*.test.mjs'],
+    files: ['tests/**/*.test.mjs', '**/*.mjs'],
     languageOptions: {
       globals: {
         ...globals.node,
