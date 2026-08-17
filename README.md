@@ -1,10 +1,21 @@
 # git-stale
 
-Find stale, abandoned, and forgotten git branches. Clean up your repo.
+Find stale local git branches that are safe to delete — in one command.
+
+You know that feeling — your `git branch` list is 40 branches long, half of them are from months ago, and you're not sure which ones are merged. `git-stale` tells you exactly which branches are safe to nuke.
 
 ## Why
 
-Every repo accumulates branches. Feature branches from 6 months ago, hotfixes nobody deleted, experiment branches people forgot about. `git-stale` surfaces them so you can clean house.
+I got tired of manually checking `git branch --merged main` and then squinting at dates. This does it in one command — shows which branches are old, which are merged, and which are safe to delete.
+
+## vs Alternatives
+
+| Tool | What it does | What it lacks |
+|------|-------------|---------------|
+| `git branch --merged` | Lists merged branches | No age info, no "stale" concept, no bulk cleanup |
+| `git-delete-squashed` | Deletes squashed branches | Only squash-merged, not age-based |
+| `git cleanup` (gh CLI) | Remote branch cleanup | Doesn't handle local branches |
+| **git-stale** | Age + merge status + bulk prune | — |
 
 ## Install
 
@@ -12,101 +23,117 @@ Every repo accumulates branches. Feature branches from 6 months ago, hotfixes no
 npm install -g git-stale
 ```
 
+Or just run it directly:
+
+```bash
+npx git-stale
+```
+
 ## Usage
 
-### List stale branches
-
 ```bash
+# Show all stale branches
 git-stale
+
+# Only branches older than 30 days
+git-stale --older-than 30d
+
+# Show everything including unmerged (has unmerged work)
+git-stale --include-unmerged
+
+# Delete all merged stale branches
+git-stale --prune
+
+# JSON output
+git-stale --json
+
+# Markdown output (for docs/issues)
+git-stale --markdown
+
+# Different repo
+git-stale --repo ~/projects/my-app
 ```
 
+## What It Shows
+
 ```
-Default branch: main | Stale ≥30d | Ancient ≥90d
+Stale branches (default: main)
+──────────────────────────────────
+Branch            Age               Merged  Status
+──────────────────────────────────
+feature-old-ui    3 months ago      yes     🗑️  safe to delete
+fix/login-bug     2 months ago      yes     🗑️  safe to delete
+experiment/raft   45 days ago       no      ⚠️  has unmerged work
 
-Branch           Days  Age     Merged  Author   Ahead  Last commit
-----------------------------------------------------------------------
-feature/auth      67   stale   no      alice        3  add OAuth2
-hotfix/rate-fix   45   stale   yes     bob          0  fix rate limit
-experiment/ui     12   fresh   no      charlie      5  try new layout
-
-Total: 3 branches | 2 stale | 0 ancient | 1 merged | 2 unmerged
-```
-
-### Show cleanup commands
-
-```bash
-git-stale cleanup
+3 stale branches (2 safe to delete)
 ```
 
-Outputs `git branch -d` commands for merged stale branches that are safe to delete.
-
-### Options
+## Options
 
 | Flag | Description |
 |------|-------------|
-| `--days <n>` | Stale threshold (default: 30) |
-| `--ancient <n>` | Ancient threshold (default: 90) |
-| `--default <br>` | Default branch name (auto-detected) |
-| `--remote` | Include remote branches |
-| `--merged` | Only show merged branches |
-| `--unmerged` | Only show unmerged branches |
-| `--exclude <pat>` | Exclude branch pattern (repeatable) |
-| `--json` | JSON output |
-| `--markdown` | Markdown output |
-| `--repo <path>` | Repository path (default: cwd) |
+| `--older-than <n[d\|m\|y]>` | Minimum age (e.g. `30d`, `3m`, `1y`, or bare `60` for days) |
+| `--include-unmerged` | Show branches with unmerged work too |
+| `--no-merge-check` | Skip merge check (faster for large repos) |
+| `--prune` | Delete all merged stale branches |
+| `--json` | Output as JSON |
+| `--markdown` | Output as Markdown |
+| `--repo <path>` | Path to git repo (default: current directory) |
+| `-V, --version` | Show version |
+| `-h, --help` | Show help |
 
-### Examples
+## Exit Codes
+
+- `0` — no merged stale branches found
+- `1` — merged stale branches found (safe to delete)
+- `2` — error
+
+Great for CI: `git-stale --older-than 90d && echo "clean"`
+
+## Real-World Examples
+
+### 1. Post-Release Cleanup
+
+After shipping a big release with 15+ feature branches:
 
 ```bash
-# Find branches older than 60 days
-git-stale --days 60
+# See what can go
+git-stale --older-than 14d
 
-# Only unmerged stale branches
-git-stale --unmerged
-
-# Exclude release branches
-git-stale --exclude "release/*"
-
-# JSON for scripts
-git-stale --json
-
-# Markdown report
-git-stale --markdown > stale-report.md
-
-# What can I safely delete?
-git-stale cleanup
+# Nuke the merged ones
+git-stale --older-than 14d --prune
 ```
 
-## API
+### 2. CI Gate for Branch Hygiene
 
-```typescript
-import { analyze, formatTable, formatJSON } from "git-stale";
+Fail CI if branches pile up — paste into a GitHub Action:
 
-const result = analyze({
-  repoPath: "/path/to/repo",
-  staleDays: 30,
-  ancientDays: 90,
-  exclude: ["release/*"],
-  mergedOnly: false,
-  unmergedOnly: false,
-  remote: false,
-});
-
-console.log(formatTable(result, config));
-console.log(formatJSON(result));
+```yaml
+- name: Check for stale branches
+  run: |
+    STALE=$(git-stale --json | jq '.branches | length')
+    if [ "$STALE" -gt 10 ]; then
+      echo "⚠️ $STALE stale branches — time for cleanup"
+      exit 1
+    fi
 ```
 
-## What it checks
+### 3. Weekly Cleanup Report
 
-- **Last commit age** — days since last commit on each branch
-- **Merge status** — whether the branch has been merged into default
-- **Ahead/behind** — how many commits ahead or behind the default branch
-- **Total commits** — commit count on the branch
-- **Author** — who made the last commit
+Generate a markdown report for your team chat:
 
-## Zero dependencies
+```bash
+git-stale --older-than 30d --markdown > stale-report.md
+# Paste into Slack/Notion
+```
 
-Runs on Node.js 18+. No external dependencies.
+## How It Works
+
+1. Lists all local branches except current and default (main/master)
+2. Checks each branch's last commit timestamp
+3. Checks if branch is merged into the default branch (`merge-base --is-ancestor`)
+4. Filters by age and merge status
+5. Shows results sorted oldest first
 
 ## License
 

@@ -1,4 +1,17 @@
 node_modules/
-src/
-tsconfig.json
-package-lock.json
+coverage/
+dist/
+build/
+.env
+__pycache__/
+.venv/
+*.egg-info/
+.mypy_cache/
+.env.*
+
+# Additional patterns
+*.log
+*.tgz
+*.DS_Store
+.idea/
+.vscode/
