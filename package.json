@@ -1,5 +1,5 @@
 {
-  "name": "git-stale",
+  "name": "@sulthonzh/git-stale",
   "version": "1.2.0",
   "description": "Find stale local git branches that are safe to delete",
   "bin": {
